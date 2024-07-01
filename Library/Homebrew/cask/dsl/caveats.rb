@@ -14,15 +14,13 @@ module Cask
     # The return value of the last method in the block is also sent
     # to the output by the caller, but that feature is only for the
     # convenience of cask authors.
-    #
-    # @api private
     class Caveats < Base
       extend Attrable
 
       attr_predicate :discontinued?
 
       def initialize(*args)
-        super(*args)
+        super
         @built_in_caveats = {}
         @custom_caveats = []
         @discontinued = false
@@ -39,6 +37,7 @@ module Cask
 
       private_class_method :caveat
 
+      sig { returns(String) }
       def to_s
         (@custom_caveats + @built_in_caveats.values).join("\n")
       end
@@ -136,7 +135,7 @@ module Cask
         else
           <<~EOS
             #{@cask} requires Java #{java_version}. You can install it with:
-              brew install --cask homebrew/cask-versions/temurin#{java_version}
+              brew install --cask temurin@#{java_version}
           EOS
         end
       end
@@ -165,7 +164,7 @@ module Cask
       end
 
       caveat :discontinued do
-        # odeprecated "`caveats :discontinued`", "`deprecate!`"
+        odeprecated "`caveats :discontinued`", "`deprecate!`"
         @discontinued = true
         <<~EOS
           #{@cask} has been officially discontinued upstream.

@@ -13,17 +13,20 @@ require "extend/hash/keys"
 
 # The {Formulary} is responsible for creating instances of {Formula}.
 # It is not meant to be used directly from formulae.
-#
-# @api private
 module Formulary
   extend Context
   extend Cachable
 
   URL_START_REGEX = %r{(https?|ftp|file)://}
+  private_constant :URL_START_REGEX
 
-  # :codesign and custom requirement classes are not supported
+  # `:codesign` and custom requirement classes are not supported.
   API_SUPPORTED_REQUIREMENTS = [:arch, :linux, :macos, :maximum_macos, :xcode].freeze
+  private_constant :API_SUPPORTED_REQUIREMENTS
 
+  # Enable the factory cache.
+  #
+  # @api internal
   sig { void }
   def self.enable_factory_cache!
     @factory_cache = true
@@ -73,7 +76,6 @@ module Formulary
     super
   end
 
-  # @private
   module PathnameWriteMkpath
     refine Pathname do
       def write(content, offset = nil, **open_args)
@@ -209,38 +211,71 @@ module Formulary
       end
     end
 
-    add_deps = lambda do |spec|
-      T.bind(self, SoftwareSpec)
+    add_deps = if Homebrew::API.internal_json_v3?
+      lambda do |deps|
+        T.bind(self, SoftwareSpec)
 
-      dep_json = json_formula.fetch("#{spec}_dependencies", json_formula)
+        deps&.each do |name, info|
+          tags = case info&.dig("tags")
+          in Array => tag_list
+            tag_list.map(&:to_sym)
+          in String => tag
+            tag.to_sym
+          else
+            nil
+          end
 
-      dep_json["dependencies"]&.each do |dep|
-        # Backwards compatibility check - uses_from_macos used to be a part of dependencies on Linux
-        next if !json_formula.key?("uses_from_macos_bounds") && uses_from_macos_names.include?(dep) &&
-                !Homebrew::SimulateSystem.simulating_or_running_on_macos?
+          if info&.key?("uses_from_macos")
+            bounds = info["uses_from_macos"].dup || {}
+            bounds.deep_transform_keys!(&:to_sym)
+            bounds.deep_transform_values!(&:to_sym)
 
-        depends_on dep
+            if tags
+              uses_from_macos name => tags, **bounds
+            else
+              uses_from_macos name, **bounds
+            end
+          elsif tags
+            depends_on name => tags
+          else
+            depends_on name
+          end
+        end
       end
+    else
+      lambda do |spec|
+        T.bind(self, SoftwareSpec)
 
-      [:build, :test, :recommended, :optional].each do |type|
-        dep_json["#{type}_dependencies"]&.each do |dep|
+        dep_json = json_formula.fetch("#{spec}_dependencies", json_formula)
+
+        dep_json["dependencies"]&.each do |dep|
           # Backwards compatibility check - uses_from_macos used to be a part of dependencies on Linux
           next if !json_formula.key?("uses_from_macos_bounds") && uses_from_macos_names.include?(dep) &&
                   !Homebrew::SimulateSystem.simulating_or_running_on_macos?
 
-          depends_on dep => type
+          depends_on dep
         end
-      end
 
-      dep_json["uses_from_macos"]&.each_with_index do |dep, index|
-        bounds = dep_json.fetch("uses_from_macos_bounds", [])[index].dup || {}
-        bounds.deep_transform_keys!(&:to_sym)
-        bounds.deep_transform_values!(&:to_sym)
+        [:build, :test, :recommended, :optional].each do |type|
+          dep_json["#{type}_dependencies"]&.each do |dep|
+            # Backwards compatibility check - uses_from_macos used to be a part of dependencies on Linux
+            next if !json_formula.key?("uses_from_macos_bounds") && uses_from_macos_names.include?(dep) &&
+                    !Homebrew::SimulateSystem.simulating_or_running_on_macos?
 
-        if dep.is_a?(Hash)
-          uses_from_macos dep.deep_transform_values(&:to_sym).merge(bounds)
-        else
-          uses_from_macos dep, bounds
+            depends_on dep => type
+          end
+        end
+
+        dep_json["uses_from_macos"]&.each_with_index do |dep, index|
+          bounds = dep_json.fetch("uses_from_macos_bounds", [])[index].dup || {}
+          bounds.deep_transform_keys!(&:to_sym)
+          bounds.deep_transform_values!(&:to_sym)
+
+          if dep.is_a?(Hash)
+            uses_from_macos dep.deep_transform_values(&:to_sym).merge(bounds)
+          else
+            uses_from_macos dep, bounds
+          end
         end
       end
     end
@@ -265,7 +300,11 @@ module Formulary
           version Homebrew::API.internal_json_v3? ? json_formula["version"] : json_formula["versions"]["stable"]
           sha256 urls_stable["checksum"] if urls_stable["checksum"].present?
 
-          instance_exec(:stable, &add_deps)
+          if Homebrew::API.internal_json_v3?
+            instance_exec(json_formula["dependencies"], &add_deps)
+          else
+            instance_exec(:stable, &add_deps)
+          end
 
           requirements[:stable]&.each do |req|
             depends_on req
@@ -281,7 +320,11 @@ module Formulary
           }.compact
           url urls_head["url"], **url_spec
 
-          instance_exec(:head, &add_deps)
+          if Homebrew::API.internal_json_v3?
+            instance_exec(json_formula["head_dependencies"], &add_deps)
+          else
+            instance_exec(:head, &add_deps)
+          end
 
           requirements[:head]&.each do |req|
             depends_on req
@@ -419,7 +462,6 @@ module Formulary
       end
     end
 
-    klass = T.cast(klass, T.class_of(Formula))
     mod.const_set(class_name, klass)
 
     platform_cache[:api] ||= {}
@@ -494,19 +536,19 @@ module Formulary
   class FormulaLoader
     include Context
 
-    # The formula's name
+    # The formula's name.
     sig { returns(String) }
     attr_reader :name
 
-    # The formula's ruby file's path or filename
+    # The formula file's path.
     sig { returns(Pathname) }
     attr_reader :path
 
-    # The name used to install the formula
+    # The name used to install the formula.
     sig { returns(T.nilable(Pathname)) }
     attr_reader :alias_path
 
-    # The formula's tap (nil if it should be implicitly determined)
+    # The formula's tap (`nil` if it should be implicitly determined).
     sig { returns(T.nilable(Tap)) }
     attr_reader :tap
 
@@ -717,7 +759,7 @@ module Formulary
 
     sig {
       params(ref: T.any(String, Pathname, URI::Generic), from: Symbol, warn: T::Boolean)
-        .returns(T.nilable(T.attached_class))
+        .returns(T.nilable(FormulaLoader))
     }
     def self.try_new(ref, from: T.unsafe(nil), warn: false)
       ref = ref.to_s
@@ -734,7 +776,11 @@ module Formulary
         {}
       end
 
-      new(name, path, tap:, **options)
+      if type == :migration && tap.core_tap? && (loader = FromAPILoader.try_new(name))
+        loader
+      else
+        new(name, path, tap:, **options)
+      end
     end
 
     sig { params(name: String, path: Pathname, tap: Tap, alias_name: String).void }
@@ -769,7 +815,7 @@ module Formulary
   class FromNameLoader < FromTapLoader
     sig {
       params(ref: T.any(String, Pathname, URI::Generic), from: Symbol, warn: T::Boolean)
-        .returns(T.nilable(T.attached_class))
+        .returns(T.nilable(FormulaLoader))
     }
     def self.try_new(ref, from: T.unsafe(nil), warn: false)
       return unless ref.is_a?(String)
@@ -785,6 +831,7 @@ module Formulary
 
       loaders = Tap.select { |tap| tap.installed? && !tap.core_tap? }
                    .filter_map { |tap| super("#{tap}/#{name}", warn:) }
+                   .uniq(&:path)
                    .select { |tap| tap.path.exist? }
 
       case loaders.count
@@ -927,6 +974,8 @@ module Formulary
   # * a formula pathname
   # * a formula URL
   # * a local bottle reference
+  #
+  # @api internal
   sig {
     params(
       ref:           T.any(Pathname, String),
@@ -974,8 +1023,8 @@ module Formulary
   # Return a {Formula} instance for the given rack.
   #
   # @param spec when nil, will auto resolve the formula's spec.
-  # @param :alias_path will be used if the formula is found not to be
-  #   installed, and discarded if it is installed because the `alias_path` used
+  # @param alias_path will be used if the formula is found not to be
+  #   installed and discarded if it is installed because the `alias_path` used
   #   to install the formula will be set instead.
   sig {
     params(
@@ -1034,7 +1083,7 @@ module Formulary
     force_bottle: T.unsafe(nil),
     flags: T.unsafe(nil)
   )
-    tab = Tab.for_keg(keg)
+    tab = keg.tab
     tap = tab.tap
     spec ||= tab.spec
 

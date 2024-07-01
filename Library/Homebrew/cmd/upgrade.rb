@@ -28,6 +28,9 @@ module Homebrew
         switch "-d", "--debug",
                description: "If brewing fails, open an interactive debugging session with access to IRB " \
                             "or a shell inside the temporary build directory."
+        switch "--display-times",
+               env:         :display_install_times,
+               description: "Print install times for each package at the end of the run."
         switch "-f", "--force",
                description: "Install formulae without checking for previously installed keg-only or " \
                             "non-migrated versions. When installing casks, overwrite existing files " \
@@ -68,10 +71,6 @@ module Homebrew
           [:switch, "--debug-symbols", {
             depends_on:  "--build-from-source",
             description: "Generate debug symbols on build. Source will be retained in a cache directory.",
-          }],
-          [:switch, "--display-times", {
-            env:         :display_install_times,
-            description: "Print install times for each package at the end of the run.",
           }],
           [:switch, "--overwrite", {
             description: "Delete files that already exist in the prefix while linking.",
@@ -125,8 +124,8 @@ module Homebrew
 
       sig { override.void }
       def run
-        # Deprecated since this is now the default behavior.
-        odeprecated "`brew upgrade --ignore-pinned`" if args.ignore_pinned?
+        # Disabled since this is now the default behavior.
+        odisabled "`brew upgrade --ignore-pinned`" if args.ignore_pinned?
 
         formulae, casks = args.named.to_resolved_formulae_to_casks
         # If one or more formulae are specified, but no casks were

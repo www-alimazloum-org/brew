@@ -142,7 +142,7 @@ old. This can be adjusted with `HOMEBREW_CLEANUP_MAX_AGE_DAYS`.
 
 : Show what would be removed, but do not actually remove anything.
 
-`-s`
+`-s`, `--scrub`
 
 : Scrub the cache, including downloads for even the latest versions. Note that
   downloads for any installed formulae or casks will still not be deleted. If
@@ -152,6 +152,10 @@ old. This can be adjusted with `HOMEBREW_CLEANUP_MAX_AGE_DAYS`.
 
 : Only prune the symlinks and directories from the prefix and remove no other
   files.
+
+### `command` *`command`* \[...\]
+
+Display the path to the file being used when invoking `brew` *`cmd`*.
 
 ### `commands` \[`--quiet`\] \[`--include-aliases`\]
 
@@ -274,6 +278,14 @@ if the installed versions are outdated.
 `--HEAD`
 
 : Show dependencies for HEAD version instead of stable version.
+
+`--os`
+
+: Show dependencies for the given operating system.
+
+`--arch`
+
+: Show dependencies for the given CPU architecture.
 
 `--formula`
 
@@ -538,6 +550,10 @@ upgrade *`formula`* if it is already installed but outdated.
 : If brewing fails, open an interactive debugging session with access to IRB or
   a shell inside the temporary build directory.
 
+`--display-times`
+
+: Print install times for each package at the end of the run.
+
 `-f`, `--force`
 
 : Install formulae without checking for previously installed keg-only or
@@ -623,10 +639,6 @@ upgrade *`formula`* if it is already installed but outdated.
 
 : Optimise bottles for the specified architecture rather than the oldest
   architecture supported by the version of macOS the bottles are built on.
-
-`--display-times`
-
-: Print install times for each package at the end of the run.
 
 `-i`, `--interactive`
 
@@ -740,6 +752,14 @@ paths within its current keg. If *`cask`* is provided, list its artifacts.
 
 : List only pinned formulae, or only the specified (pinned) formulae if
   *`formula`* are provided. See also `pin`, `unpin`.
+
+`--installed-on-request`
+
+: List the formulae installed on request.
+
+`--installed-as-dependency`
+
+: List the formulae installed as dependencies.
 
 `-1`
 
@@ -859,7 +879,7 @@ Show install options specific to *`formula`*.
 ### `outdated` \[*`options`*\] \[*`formula`*\|*`cask`* ...\]
 
 List installed casks and formulae that have an updated version available. By
-default, version information is displayed in interactive shells, and suppressed
+default, version information is displayed in interactive shells and suppressed
 otherwise.
 
 `-q`, `--quiet`
@@ -980,6 +1000,10 @@ the reinstalled formulae or, every 30 days, for all formulae.
 : If brewing fails, open an interactive debugging session with access to IRB or
   a shell inside the temporary build directory.
 
+`--display-times`
+
+: Print install times for each package at the end of the run.
+
 `-f`, `--force`
 
 : Install without checking for previously installed keg-only or non-migrated
@@ -1015,10 +1039,6 @@ the reinstalled formulae or, every 30 days, for all formulae.
 `--debug-symbols`
 
 : Generate debug symbols on build. Source will be retained in a cache directory.
-
-`--display-times`
-
-: Print install times for each formula at the end of the run.
 
 `-g`, `--git`
 
@@ -1121,9 +1141,10 @@ Perform a substring search of cask tokens and formula names for *`text`*. If
 
 : Search for *`text`* in the given database.
 
-### `setup-ruby`
+### `setup-ruby [command]`
 
-Installs and configures Homebrew's Ruby.
+Installs and configures Homebrew's Ruby. If `command` is passed, it will only
+run Bundler if necessary for that command.
 
 ### `shellenv [bash|csh|fish|pwsh|sh|tcsh|zsh]`
 
@@ -1140,6 +1161,23 @@ evaluation of this command's output to your dotfiles (e.g. `~/.bash_profile` or
 
 The shell can be specified explicitly with a supported shell name parameter.
 Unknown shells will output POSIX exports.
+
+### `tab` \[`--installed-on-request`\] \[`--no-installed-on-request`\] *`formula`* \[...\]
+
+Edit tab information for installed formulae.
+
+This can be useful when you want to control whether an installed formula should
+be removed by `brew autoremove`. To prevent removal, mark the formula as
+installed on request; to allow removal, mark the formula as not installed on
+request.
+
+`--installed-on-request`
+
+: Mark *`formula`* as installed on request.
+
+`--no-installed-on-request`
+
+: Mark *`formula`* as not installed on request.
 
 ### `tap` \[*`options`*\] \[*`user`*`/`*`repo`*\] \[*`URL`*\]
 
@@ -1281,6 +1319,10 @@ the upgraded formulae or, every 30 days, for all formulae.
 : If brewing fails, open an interactive debugging session with access to IRB or
   a shell inside the temporary build directory.
 
+`--display-times`
+
+: Print install times for each package at the end of the run.
+
 `-f`, `--force`
 
 : Install formulae without checking for previously installed keg-only or
@@ -1328,10 +1370,6 @@ the upgraded formulae or, every 30 days, for all formulae.
 `--debug-symbols`
 
 : Generate debug symbols on build. Source will be retained in a cache directory.
-
-`--display-times`
-
-: Print install times for each package at the end of the run.
 
 `--overwrite`
 
@@ -1969,10 +2007,6 @@ Display the source of a *`formula`* or *`cask`*.
 
 : Treat all named arguments as casks.
 
-### `command` *`command`* \[...\]
-
-Display the path to the file being used when invoking `brew` *`cmd`*.
-
 ### `contributions` \[--user=*`email|username`*\] \[*`--repositories`*`=`\] \[*`--csv`*\]
 
 Summarise contributions to Homebrew repositories.
@@ -1981,10 +2015,9 @@ Summarise contributions to Homebrew repositories.
 
 : Specify a comma-separated list of repositories to search. Supported
   repositories: `brew`, `core`, `cask`, `aliases`, `bundle`,
-  `command-not-found`, `test-bot`, `services`, `cask-fonts` and `cask-versions`.
-  Omitting this flag, or specifying `--repositories=primary`, searches only the
-  main repositories: brew,core,cask. Specifying `--repositories=all`, searches
-  all repositories.
+  `command-not-found`, `test-bot` and `services`. Omitting this flag, or
+  specifying `--repositories=primary`, searches only the main repositories:
+  brew,core,cask. Specifying `--repositories=all`, searches all repositories.
 
 `--from`
 
@@ -2154,6 +2187,11 @@ formula file at *`tap`*`/Formula/`*`formula`*`@`*`version`*`.rb`. If the tap is
 not installed yet, attempt to install/clone the tap before continuing. To
 extract a formula from a tap that is not `homebrew/core` use its fully-qualified
 form of *`user`*`/`*`repo`*`/`*`formula`*.
+
+`--git-revision`
+
+: Search for the specified *`version`* of *`formula`* starting at *`revision`*
+  instead of HEAD.
 
 `--version`
 
@@ -2362,7 +2400,7 @@ the repository.
 
 ### `pr-pull` \[*`options`*\] *`pull_request`* \[...\]
 
-Download and publish bottles, and apply the bottle commit from a pull request
+Download and publish bottles and apply the bottle commit from a pull request
 with artifacts generated by GitHub Actions. Requires write access to the
 repository.
 
@@ -2423,9 +2461,9 @@ repository.
 
 : Message to include when autosquashing revision bumps, deletions and rebuilds.
 
-`--artifact`
+`--artifact-pattern`
 
-: Download artifacts with the specified name (default: `bottles`).
+: Download artifacts with the specified pattern (default: `bottles{,_*}`).
 
 `--tap`
 
@@ -2491,13 +2529,17 @@ Apply the bottle commit and publish bottles to a host.
 : Use the specified download strategy class for downloading the bottle's URL
   instead of Homebrew's default.
 
-### `prof` \[`--stackprof`\] *`command`* \[...\]
+### `prof` \[`--stackprof`\] \[`--vernier`\] *`command`* \[...\]
 
 Run Homebrew with a Ruby profiler. For example, `brew prof readall`.
 
 `--stackprof`
 
 : Use `stackprof` instead of `ruby-prof` (the default).
+
+`--vernier`
+
+: Use `vernier` instead of `ruby-prof` (the default).
 
 ### `release` \[`--major`\] \[`--minor`\]
 
@@ -2537,6 +2579,18 @@ Run e.g. `brew ruby -- --version` to pass arbitrary arguments to `ruby`.
 `-e`
 
 : Execute the given text string as a script.
+
+### `rubydoc` \[`--only-public`\] \[`--open`\]
+
+Generate Homebrew's RubyDoc documentation.
+
+`--only-public`
+
+: Only generate public API documentation.
+
+`--open`
+
+: Open generated documentation in a browser.
 
 ### `sh` \[`--env=`\] \[`--cmd=`\] \[*`file`*\]
 
@@ -2650,9 +2704,9 @@ Run Homebrew's unit and integration tests.
 : Include tests that use the GitHub API and tests that use any of the taps for
   official external commands.
 
-`--byebug`
+`--debug`
 
-: Enable debugging using byebug.
+: Enable debugging using `ruby/debug`, or surface the standard `odebug` output.
 
 `--changed`
 
@@ -2664,8 +2718,8 @@ Run Homebrew's unit and integration tests.
 
 `--only`
 
-: Run only *`test_script`*`_spec.rb`. Appending `:`*`line_number`* will start at
-  a specific line.
+: Run only `<test_script>_spec.rb`. Appending `:<line_number>` will start at a
+  specific line.
 
 `--profile`
 
@@ -2845,7 +2899,7 @@ Install and commit Homebrew's vendored gems.
 
 ## GLOBAL CASK OPTIONS
 
-These options are applicable to the `install`, `reinstall`, and `upgrade`
+These options are applicable to the `install`, `reinstall` and `upgrade`
 subcommands with the `--cask` switch.
 
 `--appdir`
@@ -3255,6 +3309,14 @@ and Linux workers.
 
 : Don't pass `--online` to `brew audit` and skip `brew livecheck`.
 
+`--skip-new`
+
+: Don't pass `--new` to `brew audit` for new formulae.
+
+`--skip-new-strict`
+
+: Don't pass `--strict` to `brew audit` for new formulae.
+
 `--skip-dependents`
 
 : Don't test any dependents.
@@ -3266,10 +3328,6 @@ and Linux workers.
 `--skip-recursive-dependents`
 
 : Only test the direct dependents.
-
-`--skip-repository-audit`
-
-: Don't audit the repository.
 
 `--skip-checksum-only-audit`
 
@@ -3294,6 +3352,10 @@ and Linux workers.
 `--only-tap-syntax`
 
 : Only run the tap syntax check step.
+
+`--stable`
+
+: Only run the tap syntax checks needed on stable brew.
 
 `--only-formulae`
 
@@ -3433,6 +3495,20 @@ prefix-specific files take precedence over system-wide files (unless
 Note that these files do not support shell variable expansion e.g. `$HOME` or
 command execution e.g. `$(cat file)`.
 
+`HOMEBREW_ALLOWED_TAPS`
+
+: A space-separated list of taps. Homebrew will refuse to install a formula
+  unless it and all of its dependencies are in an official tap or in a tap on
+  this list.
+
+`HOMEBREW_API_AUTO_UPDATE_SECS`
+
+: Check Homebrew's API for new formulae or cask data every
+  `HOMEBREW_API_AUTO_UPDATE_SECS` seconds. Alternatively, disable API
+  auto-update checks entirely with `HOMEBREW_NO_AUTO_UPDATE`.
+  
+  *Default:* `450`.
+
 `HOMEBREW_API_DOMAIN`
 
 : Use this URL as the download mirror for Homebrew JSON API. If metadata files
@@ -3459,13 +3535,11 @@ command execution e.g. `$(cat file)`.
   downloaded from
   `http://localhost:8080/v2/homebrew/core/gettext/manifests/0.21`
 
-`HOMEBREW_API_AUTO_UPDATE_SECS`
+`HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK`
 
-: Check Homebrew's API for new formulae or cask data every
-  `HOMEBREW_API_AUTO_UPDATE_SECS` seconds. Alternatively, disable API
-  auto-update checks entirely with `HOMEBREW_NO_AUTO_UPDATE`.
-  
-  *Default:* `450`.
+: If `HOMEBREW_ARTIFACT_DOMAIN` and `HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK` are
+  both set, if the request to `HOMEBREW_ARTIFACT_DOMAIN` fails then it Homebrew
+  will error rather than trying any other/default URLs.
 
 `HOMEBREW_AUTO_UPDATE_SECS`
 
@@ -3475,12 +3549,6 @@ command execution e.g. `$(cat file)`.
   
   *Default:* `86400` (24 hours), `3600` (1 hour) if a developer command has been
   run or `300` (5 minutes) if `HOMEBREW_NO_INSTALL_FROM_API` is set.
-
-`HOMEBREW_AUTOREMOVE`
-
-: If set, calls to `brew cleanup` and `brew uninstall` will automatically remove
-  unused formula dependents and if `HOMEBREW_NO_INSTALL_CLEANUP` is not set,
-  `brew cleanup` will start running `brew autoremove` periodically.
 
 `HOMEBREW_BAT`
 
@@ -3500,8 +3568,8 @@ command execution e.g. `$(cat file)`.
 
 `HOMEBREW_BOOTSNAP`
 
-: If set, use Bootsnap to speed up repeated `brew` calls. A no-op when using
-  Homebrew's vendored, relocatable Ruby on macOS (as it doesn't work).
+: If set, use Bootsnap to speed up repeated `brew` calls. A no-op on Linux when
+  not using Homebrew's vendored, relocatable Ruby.
 
 `HOMEBREW_BOTTLE_DOMAIN`
 
@@ -3525,6 +3593,10 @@ command execution e.g. `$(cat file)`.
 : Use this as the browser when opening project homepages.
   
   *Default:* `$BROWSER` or the OS's default browser.
+
+`HOMEBREW_BUNDLE_USER_CACHE`
+
+: If set, use this directory as the `bundle`(1) user cache.
 
 `HOMEBREW_CACHE`
 
@@ -3565,6 +3637,12 @@ command execution e.g. `$(cat file)`.
   
   *Default:* `https://github.com/Homebrew/homebrew-core`.
 
+`HOMEBREW_CURLRC`
+
+: If set to an absolute path (i.e. beginning with `/`), pass it with `--config`
+  when invoking `curl`(1). If set but *not* a valid path, do not pass
+  `--disable`, which disables the use of `.curlrc`.
+
 `HOMEBREW_CURL_PATH`
 
 : Linux only: Set this value to a new enough `curl` executable for Homebrew to
@@ -3581,12 +3659,6 @@ command execution e.g. `$(cat file)`.
 `HOMEBREW_CURL_VERBOSE`
 
 : If set, pass `--verbose` when invoking `curl`(1).
-
-`HOMEBREW_CURLRC`
-
-: If set to an absolute path (i.e. beginning with `/`), pass it with `--config`
-  when invoking `curl`(1). If set but *not* a valid path, do not pass
-  `--disable`, which disables the use of `.curlrc`.
 
 `HOMEBREW_DEBUG`
 
@@ -3647,10 +3719,35 @@ command execution e.g. `$(cat file)`.
   
   *Default:* `15`.
 
+`HOMEBREW_FORBIDDEN_CASKS`
+
+: A space-separated list of casks. Homebrew will refuse to install a cask if it
+  or any of its dependencies is on this list.
+
+`HOMEBREW_FORBIDDEN_FORMULAE`
+
+: A space-separated list of formulae. Homebrew will refuse to install a formula
+  or cask if it or any of its dependencies is on this list.
+
 `HOMEBREW_FORBIDDEN_LICENSES`
 
 : A space-separated list of licenses. Homebrew will refuse to install a formula
   if it or any of its dependencies has a license on this list.
+
+`HOMEBREW_FORBIDDEN_OWNER`
+
+: The person who has set any `HOMEBREW_FORBIDDEN_*` variables.
+  
+  *Default:* `you`.
+
+`HOMEBREW_FORBIDDEN_OWNER_CONTACT`
+
+: How to contact the `HOMEBREW_FORBIDDEN_OWNER`, if set and necessary.
+
+`HOMEBREW_FORBIDDEN_TAPS`
+
+: A space-separated list of taps. Homebrew will refuse to install a formula if
+  it or any of its dependencies is in a tap on this list.
 
 `HOMEBREW_FORCE_BREWED_CA_CERTIFICATES`
 
@@ -3672,20 +3769,26 @@ command execution e.g. `$(cat file)`.
 : If set, always use Homebrew's vendored, relocatable Ruby version even if the
   system version of Ruby is new enough.
 
-`HOMEBREW_GIT_EMAIL`
+`HOMEBREW_FORMULA_BUILD_NETWORK`
 
-: Set the Git author and committer email to this value.
+: If set, controls network access to the sandbox for formulae builds. Overrides
+  any controls set through DSL usage inside formulae. Must be `allow` or `deny`.
+  If no value is set through this environment variable or DSL usage, the default
+  behavior is `allow`.
 
-`HOMEBREW_GIT_NAME`
+`HOMEBREW_FORMULA_POSTINSTALL_NETWORK`
 
-: Set the Git author and committer name to this value.
+: If set, controls network access to the sandbox for formulae postinstall.
+  Overrides any controls set through DSL usage inside formulae. Must be `allow`
+  or `deny`. If no value is set through this environment variable or DSL usage,
+  the default behavior is `allow`.
 
-`HOMEBREW_GIT_PATH`
+`HOMEBREW_FORMULA_TEST_NETWORK`
 
-: Linux only: Set this value to a new enough `git` executable for Homebrew to
-  use.
-  
-  *Default:* `git`.
+: If set, controls network access to the sandbox for formulae test. Overrides
+  any controls set through DSL usage inside formulae. Must be `allow` or `deny`.
+  If no value is set through this environment variable or DSL usage, the default
+  behavior is `allow`.
 
 `HOMEBREW_GITHUB_API_TOKEN`
 
@@ -3706,6 +3809,21 @@ command execution e.g. `$(cat file)`.
 
 : Use this username when accessing the GitHub Packages Registry (where bottles
   may be stored).
+
+`HOMEBREW_GIT_EMAIL`
+
+: Set the Git author and committer email to this value.
+
+`HOMEBREW_GIT_NAME`
+
+: Set the Git author and committer name to this value.
+
+`HOMEBREW_GIT_PATH`
+
+: Linux only: Set this value to a new enough `git` executable for Homebrew to
+  use.
+  
+  *Default:* `git`.
 
 `HOMEBREW_INSTALL_BADGE`
 
@@ -3740,6 +3858,11 @@ command execution e.g. `$(cat file)`.
 
 : If set, do not send analytics. Google Analytics were destroyed. For more
   information, see: <https://docs.brew.sh/Analytics>
+
+`HOMEBREW_NO_AUTOREMOVE`
+
+: If set, calls to `brew cleanup` and `brew uninstall` will not automatically
+  remove unused formula dependents.
 
 `HOMEBREW_NO_AUTO_UPDATE`
 
@@ -3787,6 +3910,14 @@ command execution e.g. `$(cat file)`.
   cause from-source SourceForge, some GNU & GNOME-hosted formulae to fail to
   download.
 
+`HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK`
+
+: If set, do not check for broken linkage of dependents or outdated dependents
+  after installing, upgrading or reinstalling formulae. This will result in
+  fewer dependents (and their dependencies) being upgraded or reinstalled but
+  may result in more breakage from running `brew install` *`formula`* or `brew
+  upgrade` *`formula`*.
+
 `HOMEBREW_NO_INSTALL_CLEANUP`
 
 : If set, `brew install`, `brew upgrade` and `brew reinstall` will never
@@ -3806,14 +3937,6 @@ command execution e.g. `$(cat file)`.
 : If set, `brew install` *`formula|cask`* will not upgrade *`formula|cask`* if
   it is installed but outdated.
 
-`HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK`
-
-: If set, do not check for broken linkage of dependents or outdated dependents
-  after installing, upgrading or reinstalling formulae. This will result in
-  fewer dependents (and their dependencies) being upgraded or reinstalled but
-  may result in more breakage from running `brew install` *`formula`* or `brew
-  upgrade` *`formula`*.
-
 `HOMEBREW_NO_UPDATE_REPORT_NEW`
 
 : If set, `brew update` will not show the list of newly added formulae/casks.
@@ -3828,10 +3951,6 @@ command execution e.g. `$(cat file)`.
 `HOMEBREW_PRY`
 
 : If set, use Pry for the `brew irb` command.
-
-`HOMEBREW_UPGRADE_GREEDY`
-
-: If set, pass `--greedy` to all cask upgrade commands.
 
 `HOMEBREW_SIMULATE_MACOS_ON_LINUX`
 
@@ -3855,6 +3974,11 @@ command execution e.g. `$(cat file)`.
   
   *Default:* `$HOME/.ssh/config`
 
+`HOMEBREW_SUDO_THROUGH_SUDO_USER`
+
+: If set, Homebrew will use the `SUDO_USER` environment variable to define the
+  user to `sudo`(8) through when running `sudo`(8).
+
 `HOMEBREW_SVN`
 
 : Use this as the `svn`(1) binary.
@@ -3867,11 +3991,6 @@ command execution e.g. `$(cat file)`.
 : If set in Homebrew's system-wide environment file (`/etc/homebrew/brew.env`),
   the system-wide environment file will be loaded last to override any prefix or
   user settings.
-
-`HOMEBREW_SUDO_THROUGH_SUDO_USER`
-
-: If set, Homebrew will use the `SUDO_USER` environment variable to define the
-  user to `sudo`(8) through when running `sudo`(8).
 
 `HOMEBREW_TEMP`
 
@@ -3888,6 +4007,10 @@ command execution e.g. `$(cat file)`.
 : If set, always use the latest stable tag (even if developer commands have been
   run).
 
+`HOMEBREW_UPGRADE_GREEDY`
+
+: If set, pass `--greedy` to all cask upgrade commands.
+
 `HOMEBREW_VERBOSE`
 
 : If set, always assume `--verbose` when running commands.
@@ -3897,6 +4020,11 @@ command execution e.g. `$(cat file)`.
 : If set, verbose output will print a `.` no more than once a minute. This can
   be useful to avoid long-running Homebrew commands being killed due to no
   output.
+
+`HOMEBREW_VERIFY_ATTESTATIONS`
+
+: If set, Homebrew will use the `gh` tool to verify cryptographic attestations
+  of build provenance for bottles from homebrew-core.
 
 `SUDO_ASKPASS`
 
@@ -3961,19 +4089,18 @@ Homebrew's Technical Steering Committee is Bo Anderson, FX Coudert, Michka
 Popoff, Mike McQuaid and Rylan Polster.
 
 Homebrew's maintainers are Alexander Bayandin, Bevan Kay, Bo Anderson, Branch
-Vincent, Caleb Xu, Carlo Cabrera, David Baumgold, Douglas Eichelberger, Dustin
-Rodrigues, Eric Knibbe, FX Coudert, Issy Long, Justin Krehel, Markus Reiter,
-Miccal Matthews, Michael Cho, Michka Popoff, Mike McQuaid, Nanda H Krishna,
-Patrick Linnane, Razvan Azamfirei, Rui Chen, Ruoyu Zhong, Rylan Polster, Sam
-Ford, Sean Molenaar and Thierry Moisan.
+Vincent, Caleb Xu, Carlo Cabrera, Douglas Eichelberger, Dustin Rodrigues, Eric
+Knibbe, FX Coudert, Issy Long, Justin Krehel, Markus Reiter, Miccal Matthews,
+Michael Cho, Michka Popoff, Mike McQuaid, Nanda H Krishna, Patrick Linnane,
+Razvan Azamfirei, Rui Chen, Ruoyu Zhong, Rylan Polster, Sam Ford, Sean Molenaar,
+Thierry Moisan, Timothy Sutton and William Woodruff.
 
 Former maintainers with significant contributions include Misty De Méo, Shaun
-Jackman, Vítor Galvão, Claudia Pellegrino, Seeker, William Woodruff, Jan
-Viljanen, JCount, commitay, Dominyk Tiller, Tim Smith, Baptiste Fontaine, Xu
-Cheng, Martin Afanasjew, Brett Koonce, Charlie Sharpsteen, Jack Nagel, Adam
-Vandenberg, Andrew Janke, Alex Dunn, neutric, Tomasz Pajor, Uladzislau
-Shablinski, Alyssa Ross, ilovezfs, Chongyu Zhu and Homebrew's creator: Max
-Howell.
+Jackman, Vítor Galvão, Claudia Pellegrino, Seeker, Jan Viljanen, JCount,
+commitay, Dominyk Tiller, Tim Smith, Baptiste Fontaine, Xu Cheng, Martin
+Afanasjew, Brett Koonce, Charlie Sharpsteen, Jack Nagel, Adam Vandenberg, Andrew
+Janke, Alex Dunn, neutric, Tomasz Pajor, Uladzislau Shablinski, Alyssa Ross,
+ilovezfs, Chongyu Zhu and Homebrew's creator: Max Howell.
 
 ## BUGS
 

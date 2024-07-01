@@ -29,22 +29,22 @@ module Homebrew
           CaskDependent.new(cask).runtime_dependencies.map(&:to_formula)
         end
         leaves_list -= casks_runtime_dependencies
-        leaves_list.select!(&method(:installed_on_request?)) if args.installed_on_request?
-        leaves_list.select!(&method(:installed_as_dependency?)) if args.installed_as_dependency?
+        leaves_list.select! { installed_on_request?(_1) } if args.installed_on_request?
+        leaves_list.select! { installed_as_dependency?(_1) } if args.installed_as_dependency?
 
         leaves_list.map(&:full_name)
                    .sort
-                   .each(&method(:puts))
+                   .each { puts(_1) }
       end
 
       private
 
       def installed_on_request?(formula)
-        Tab.for_keg(formula.any_installed_keg).installed_on_request
+        formula.any_installed_keg.tab.installed_on_request
       end
 
       def installed_as_dependency?(formula)
-        Tab.for_keg(formula.any_installed_keg).installed_as_dependency
+        formula.any_installed_keg.tab.installed_as_dependency
       end
     end
   end

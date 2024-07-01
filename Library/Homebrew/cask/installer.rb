@@ -15,8 +15,6 @@ require "cgi"
 
 module Cask
   # Installer for a {Cask}.
-  #
-  # @api private
   class Installer
     extend Attrable
 
@@ -71,6 +69,9 @@ module Cask
       download(quiet:, timeout:)
 
       satisfy_cask_and_formula_dependencies
+
+      forbidden_tap_check
+      forbidden_cask_and_formula_check
     end
 
     def stage
@@ -135,10 +136,9 @@ on_request: true)
 
       case deprecate_disable_type
       when :deprecated
-        puts "::warning::#{message_full}" if ENV["GITHUB_ACTIONS"]
         opoo message_full
       when :disabled
-        puts "::error::#{message_full}" if ENV["GITHUB_ACTIONS"]
+        GitHub::Actions.puts_annotation_if_env_set(:error, message)
         raise CaskCannotBeInstalledError.new(@cask, message)
       end
     end
@@ -338,7 +338,7 @@ on_request: true)
       missing_formulae_and_casks = missing_cask_and_formula_dependencies
 
       if missing_formulae_and_casks.empty?
-        puts "All formula dependencies satisfied."
+        puts "All dependencies satisfied."
         return
       end
 
@@ -569,6 +569,103 @@ on_request: true)
     def purge_caskroom_path
       odebug "Purging all staged versions of Cask #{@cask}"
       gain_permissions_remove(@cask.caskroom_path)
+    end
+
+    sig { void }
+    def forbidden_tap_check
+      return if Tap.allowed_taps.blank? && Tap.forbidden_taps.blank?
+
+      owner = Homebrew::EnvConfig.forbidden_owner
+      owner_contact = if (contact = Homebrew::EnvConfig.forbidden_owner_contact.presence)
+        "\n#{contact}"
+      end
+
+      unless skip_cask_deps?
+        cask_and_formula_dependencies.each do |cask_or_formula|
+          dep_tap = cask_or_formula.tap
+          next if dep_tap.blank? || (dep_tap.allowed_by_env? && !dep_tap.forbidden_by_env?)
+
+          dep_full_name = cask_or_formula.full_name
+          error_message = +"The installation of #{@cask} has a dependency #{dep_full_name}\n" \
+                           "from the #{dep_tap} tap but #{owner} "
+          error_message << "has not allowed this tap in `HOMEBREW_ALLOWED_TAPS`" unless dep_tap.allowed_by_env?
+          error_message << " and\n" if !dep_tap.allowed_by_env? && dep_tap.forbidden_by_env?
+          error_message << "has forbidden this tap in `HOMEBREW_FORBIDDEN_TAPS`" if dep_tap.forbidden_by_env?
+          error_message << ".#{owner_contact}"
+
+          raise CaskCannotBeInstalledError.new(@cask, error_message)
+        end
+      end
+
+      cask_tap = @cask.tap
+      return if cask_tap.blank? || (cask_tap.allowed_by_env? && !cask_tap.forbidden_by_env?)
+
+      error_message = +"The installation of #{@cask.full_name} has the tap #{cask_tap}\n" \
+                       "but #{owner} "
+      error_message << "has not allowed this tap in `HOMEBREW_ALLOWED_TAPS`" unless cask_tap.allowed_by_env?
+      error_message << " and\n" if !cask_tap.allowed_by_env? && cask_tap.forbidden_by_env?
+      error_message << "has forbidden this tap in `HOMEBREW_FORBIDDEN_TAPS`" if cask_tap.forbidden_by_env?
+      error_message << ".#{owner_contact}"
+
+      raise CaskCannotBeInstalledError.new(@cask, error_message)
+    end
+
+    sig { void }
+    def forbidden_cask_and_formula_check
+      forbidden_formulae = Set.new(Homebrew::EnvConfig.forbidden_formulae.to_s.split)
+      forbidden_casks = Set.new(Homebrew::EnvConfig.forbidden_casks.to_s.split)
+      return if forbidden_formulae.blank? && forbidden_casks.blank?
+
+      owner = Homebrew::EnvConfig.forbidden_owner
+      owner_contact = if (contact = Homebrew::EnvConfig.forbidden_owner_contact.presence)
+        "\n#{contact}"
+      end
+
+      unless skip_cask_deps?
+        cask_and_formula_dependencies.each do |dep_cask_or_formula|
+          dep_name, dep_type, variable = if dep_cask_or_formula.is_a?(Cask) && forbidden_casks.present?
+            dep_cask = dep_cask_or_formula
+            dep_cask_name = if forbidden_casks.include?(dep_cask.token)
+              dep_cask.token
+            elsif dep_cask.tap.present? &&
+                  forbidden_casks.include?(dep_cask.full_name)
+              dep_cask.full_name
+            end
+            [dep_cask_name, "cask", "HOMEBREW_FORBIDDEN_CASKS"]
+          elsif dep_cask_or_formula.is_a?(Formula) && forbidden_formulae.present?
+            dep_formula = dep_cask_or_formula
+            formula_name = if forbidden_formulae.include?(dep_formula.name)
+              dep_formula.name
+            elsif dep_formula.tap.present? &&
+                  forbidden_formulae.include?(dep_formula.full_name)
+              dep_formula.full_name
+            end
+            [formula_name, "formula", "HOMEBREW_FORBIDDEN_FORMULAE"]
+          end
+          next if dep_name.blank?
+
+          raise CaskCannotBeInstalledError.new(@cask, <<~EOS
+            The installation of #{@cask} has a dependency #{dep_name}
+            but the #{dep_name} #{dep_type} was forbidden by #{owner} in `#{variable}`.#{owner_contact}
+          EOS
+          )
+        end
+      end
+      return if forbidden_casks.blank?
+
+      cask_name = if forbidden_casks.include?(@cask.token)
+        @cask.token
+      elsif forbidden_casks.include?(@cask.full_name)
+        @cask.full_name
+      else
+        return
+      end
+
+      raise CaskCannotBeInstalledError.new(@cask, <<~EOS
+        The installation of #{cask_name} was forbidden by #{owner}
+        in `HOMEBREW_FORBIDDEN_CASKS`.#{owner_contact}
+      EOS
+      )
     end
 
     private

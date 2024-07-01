@@ -4,9 +4,7 @@ gem:
   exclude:
     # These conflict with the rbi files provided by sorbet:
     - json
-    - msgpack
     # These aren't needed:
-    - byebug
     - coderay
     - commander
     - diff-lcs
@@ -24,8 +22,6 @@ gem:
     - rspec-retry
     - rspec
     - rspec_junit_formatter
-    - rubocop-capybara
-    - rubocop-factory_bot
     - rubocop-md
     - rubocop-performance
     - rubocop-rspec
@@ -33,8 +29,6 @@ gem:
     - ruby-prof
     - simplecov_json_formatter
     - simpleidn
-    - unf
-    - unf_ext
     - unicode-display_width
     - yard-sorbet
   prerequire: sorbet/tapioca/prerequire.rb

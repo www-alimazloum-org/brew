@@ -123,6 +123,10 @@ class SoftwareSpec
     resources.key?(name)
   end
 
+  sig {
+    params(name: String, klass: T.class_of(Resource), block: T.nilable(T.proc.bind(Resource).void))
+      .returns(T.nilable(Resource))
+  }
   def resource(name, klass = Resource, &block)
     if block
       raise DuplicateResourceError, name if resource_defined?(name)
@@ -132,13 +136,14 @@ class SoftwareSpec
 
       resources[name] = res
       dependency_collector.add(res)
+      res
     else
       resources.fetch(name) { raise ResourceMissingError.new(owner, name) }
     end
   end
 
   def go_resource(name, &block)
-    # odeprecated "SoftwareSpec#go_resource", "Go modules"
+    odeprecated "`SoftwareSpec#go_resource`", "Go modules"
     resource name, Resource::Go, &block
   end
 
@@ -205,18 +210,6 @@ class SoftwareSpec
     end
 
     depends_on UsesFromMacOSDependency.new(dep, tags, bounds:)
-  end
-
-  # @deprecated
-  def uses_from_macos_elements
-    # TODO: Remember to remove the delegate from `Formula`.
-    odisabled "#uses_from_macos_elements", "#declared_deps"
-  end
-
-  # @deprecated
-  def uses_from_macos_names
-    # TODO: Remember to remove the delegate from `Formula`.
-    odisabled "#uses_from_macos_names", "#declared_deps"
   end
 
   def deps
@@ -314,10 +307,12 @@ class Bottle
     end
 
     sig { returns(String) }
-    def to_s
+    def to_str
       "#{name}--#{version}#{extname}"
     end
-    alias to_str to_s
+
+    sig { returns(String) }
+    def to_s = to_str
 
     sig { returns(String) }
     def json
@@ -421,6 +416,11 @@ class Bottle
     return {} unless github_packages_manifest_resource&.downloaded?
 
     github_packages_manifest_resource_tab(github_packages_manifest_resource)
+  end
+
+  sig { returns(Filename) }
+  def filename
+    Filename.create(resource.owner, @tag, @spec.rebuild)
   end
 
   private
@@ -626,11 +626,11 @@ class BottleSpecification
   def checksums
     tags = collector.tags.sort_by do |tag|
       version = tag.to_macos_version
-      # Give arm64 bottles a higher priority so they are first
-      priority = (tag.arch == :arm64) ? "2" : "1"
+      # Give `arm64` bottles a higher priority so they are first.
+      priority = (tag.arch == :arm64) ? 2 : 1
       "#{priority}.#{version}_#{tag}"
     rescue MacOSVersion::Error
-      # Sort non-MacOS tags below MacOS tags.
+      # Sort non-macOS tags below macOS tags.
       "0.#{tag}"
     end
     tags.reverse.map do |tag|

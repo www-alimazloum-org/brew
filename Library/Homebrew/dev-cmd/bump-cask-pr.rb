@@ -49,8 +49,6 @@ module Homebrew
                description: "Specify the <SHA-256> checksum of the new download."
         flag   "--fork-org=",
                description: "Use the specified GitHub organization for forking."
-        switch "-f", "--force",
-               hidden: true
 
         conflicts "--dry-run", "--write"
         conflicts "--no-audit", "--online"
@@ -62,8 +60,7 @@ module Homebrew
 
       sig { override.void }
       def run
-        odeprecated "brew bump-cask-pr --online" if args.online?
-        odisabled "brew bump-cask-pr --force" if args.force?
+        odisabled "brew bump-cask-pr --online" if args.online?
 
         # This will be run by `brew audit` or `brew style` later so run it first to
         # not start spamming during normal output.
@@ -86,7 +83,7 @@ module Homebrew
 
         odie <<~EOS unless cask.tap.allow_bump?(cask.token)
           Whoops, the #{cask.token} cask has its version update
-          pull requests automatically opened by BrewTestBot!
+          pull requests automatically opened by BrewTestBot every ~3 hours!
           We'd still love your contributions, though, so try another one
           that's not in the autobump list:
             #{Formatter.url("#{cask.tap.remote}/blob/master/.github/autobump.txt")}

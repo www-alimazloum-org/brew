@@ -144,14 +144,14 @@ module Language
 
     # Mixin module for {Formula} adding virtualenv support features.
     module Virtualenv
-      # Instantiates, creates, and yields a {Virtualenv} object for use from
+      # Instantiates, creates and yields a {Virtualenv} object for use from
       # {Formula#install}, which provides helper methods for instantiating and
       # installing packages into a Python virtualenv.
       #
       # @param venv_root [Pathname, String] the path to the root of the virtualenv
       #   (often `libexec/"venv"`)
-      # @param python [String, Pathname] which interpreter to use (e.g. "python3"
-      #   or "python3.x")
+      # @param python [String, Pathname] which interpreter to use (e.g. `"python3"`
+      #   or `"python3.x"`)
       # @param formula [Formula] the active {Formula}
       # @return [Virtualenv] a {Virtualenv} instance
       sig {
@@ -166,7 +166,7 @@ module Language
       def virtualenv_create(venv_root, python = "python", formula = T.cast(self, Formula),
                             system_site_packages: true, without_pip: true)
         # Limit deprecation to 3.12+ for now (or if we can't determine the version).
-        # Some used this argument for setuptools, which we no longer bundle since 3.12.
+        # Some used this argument for `setuptools`, which we no longer bundle since 3.12.
         unless without_pip
           python_version = Language::Python.major_minor_version(python)
           if python_version.nil? || python_version.null? || python_version >= "3.12"
@@ -198,12 +198,10 @@ module Language
 
       # Returns true if a formula option for the specified python is currently
       # active or if the specified python is required by the formula. Valid
-      # inputs are "python", "python2", and :python3. Note that
-      # "with-python", "without-python", "with-python@2", and "without-python@2"
+      # inputs are `"python"`, `"python2"` and `:python3`. Note that
+      # `"with-python"`, `"without-python"`, `"with-python@2"` and `"without-python@2"`
       # formula options are handled correctly even if not associated with any
       # corresponding depends_on statement.
-      #
-      # @api private
       sig { params(python: String).returns(T::Boolean) }
       def needs_python?(python)
         return true if build.with?(python)
@@ -213,7 +211,7 @@ module Language
 
       # Helper method for the common case of installing a Python application.
       # Creates a virtualenv in `libexec`, installs all `resource`s defined
-      # on the formula, and then installs the formula. An options hash may be
+      # on the formula and then installs the formula. An options hash may be
       # passed (e.g. `:using => "python"`) to override the default, guessed
       # formula preference for python or python@x.y, or to resolve an ambiguous
       # case where it's not clear whether python or python@x.y should be the
@@ -224,10 +222,13 @@ module Language
           system_site_packages: T::Boolean,
           without_pip:          T::Boolean,
           link_manpages:        T::Boolean,
+          without:              T.nilable(T.any(String, T::Array[String])),
+          start_with:           T.nilable(T.any(String, T::Array[String])),
+          end_with:             T.nilable(T.any(String, T::Array[String])),
         ).returns(Virtualenv)
       }
       def virtualenv_install_with_resources(using: nil, system_site_packages: true, without_pip: true,
-                                            link_manpages: false)
+                                            link_manpages: false, without: nil, start_with: nil, end_with: nil)
         python = using
         if python.nil?
           wanted = python_names.select { |py| needs_python?(py) }
@@ -237,9 +238,22 @@ module Language
           python = T.must(wanted.first)
           python = "python3" if python == "python"
         end
+
+        venv_resources = if without.nil? && start_with.nil? && end_with.nil?
+          resources
+        else
+          remaining_resources = resources.to_h { |resource| [resource.name, resource] }
+
+          slice_resources!(remaining_resources, Array(without))
+          start_with_resources = slice_resources!(remaining_resources, Array(start_with))
+          end_with_resources = slice_resources!(remaining_resources, Array(end_with))
+
+          start_with_resources + remaining_resources.values + end_with_resources
+        end
+
         venv = virtualenv_create(libexec, python.delete("@"), system_site_packages:,
                                                               without_pip:)
-        venv.pip_install resources
+        venv.pip_install venv_resources
         venv.pip_install_and_link(T.must(buildpath), link_manpages:)
         venv
       end
@@ -247,6 +261,22 @@ module Language
       sig { returns(T::Array[String]) }
       def python_names
         %w[python python3 pypy pypy3] + Formula.names.select { |name| name.start_with? "python@" }
+      end
+
+      private
+
+      sig {
+        params(
+          resources_hash: T::Hash[String, Resource],
+          resource_names: T::Array[String],
+        ).returns(T::Array[Resource])
+      }
+      def slice_resources!(resources_hash, resource_names)
+        resource_names.map do |resource_name|
+          resources_hash.delete(resource_name) do
+            raise ArgumentError, "Resource \"#{resource_name}\" is not defined in formula or is already used"
+          end
+        end
       end
 
       # Convenience wrapper for creating and installing packages into Python

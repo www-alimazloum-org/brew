@@ -8,8 +8,6 @@ require "cli/args"
 module Homebrew
   module CLI
     # Helper class for loading formulae/casks from named arguments.
-    #
-    # @api private
     class NamedArgs < Array
       sig {
         params(
@@ -103,6 +101,28 @@ module Homebrew
         @to_formulae_to_casks[[method, only]] = to_formulae_and_casks(only:, method:)
                                                 .partition { |o| o.is_a?(Formula) || o.is_a?(Keg) }
                                                 .map(&:freeze).freeze
+      end
+
+      # Returns formulae and casks after validating that a tap is present for each of them.
+      def to_formulae_and_casks_with_taps
+        formulae_and_casks_with_taps, formulae_and_casks_without_taps =
+          to_formulae_and_casks.partition do |formula_or_cask|
+            T.cast(formula_or_cask, T.any(Formula, Cask::Cask)).tap&.installed?
+          end
+
+        return formulae_and_casks_with_taps if formulae_and_casks_without_taps.blank?
+
+        types = []
+        types << "formulae" if formulae_and_casks_without_taps.any?(Formula)
+        types << "casks" if formulae_and_casks_without_taps.any?(Cask::Cask)
+
+        odie <<~ERROR
+          These #{types.join(" and ")} are not in any locally installed taps!
+
+            #{formulae_and_casks_without_taps.sort_by(&:to_s).join("\n  ")}
+
+          You may need to run `brew tap` to install additional taps.
+        ERROR
       end
 
       def to_formulae_and_casks_and_unavailable(only: parent&.only_formula_or_cask, method: nil)
@@ -373,11 +393,11 @@ module Homebrew
         # Return keg if it is the only installed keg
         return kegs if kegs.length == 1
 
-        stable_kegs = kegs.reject { |k| k.version.head? }
+        stable_kegs = kegs.reject { |keg| keg.version.head? }
 
         if stable_kegs.blank?
           return kegs.max_by do |keg|
-            [Tab.for_keg(keg).source_modified_time, keg.version.revision]
+            [keg.tab.source_modified_time, keg.version.revision]
           end
         end
 

@@ -7,8 +7,6 @@ module Homebrew
   module Manpages
     module Converter
       # Converts our Kramdown-like input to pure Kramdown.
-      #
-      # @api private
       class Kramdown < ::Kramdown::Converter::Kramdown
         def initialize(root, options)
           super(root, options.merge(line_width: 80))
@@ -24,7 +22,7 @@ module Homebrew
             # Don't duplicate the URL if the link text is the same as the URL.
             "<#{text}>"
           else
-            super(element, options)
+            super
           end
         end
       end

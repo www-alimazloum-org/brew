@@ -58,31 +58,47 @@ module Kernel
     puts oh1_title(title, truncate:)
   end
 
-  # Print a message prefixed with "Warning" (do this rarely).
+  # Print a warning message.
+  #
+  # @api public
+  sig { params(message: T.any(String, Exception)).void }
   def opoo(message)
     Tty.with($stderr) do |stderr|
       stderr.puts Formatter.warning(message, label: "Warning")
+      GitHub::Actions.puts_annotation_if_env_set(:warning, message.to_s)
     end
   end
 
-  # Print a message prefixed with "Error".
+  # Print an error message.
+  #
+  # @api public
+  sig { params(message: T.any(String, Exception)).void }
   def onoe(message)
     Tty.with($stderr) do |stderr|
       stderr.puts Formatter.error(message, label: "Error")
+      GitHub::Actions.puts_annotation_if_env_set(:error, message.to_s)
     end
   end
 
+  # Print an error message and fail at the end of the program.
+  #
+  # @api public
+  sig { params(error: T.any(String, Exception)).void }
   def ofail(error)
     onoe error
     Homebrew.failed = true
   end
 
+  # Print an error message and fail immediately.
+  #
+  # @api public
   sig { params(error: T.any(String, Exception)).returns(T.noreturn) }
   def odie(error)
     onoe error
     exit 1
   end
 
+  # Output a deprecation warning/error message.
   def odeprecated(method, replacement = nil,
                   disable:                false,
                   disable_on:             nil,
@@ -135,11 +151,14 @@ module Kernel
       next unless (match = line.match(HOMEBREW_TAP_PATH_REGEX))
 
       tap = Tap.fetch(match[:user], match[:repo])
-      tap_message = +"\nPlease report this issue to the #{tap} tap (not Homebrew/brew or Homebrew/homebrew-core)"
+      tap_message = +"\nPlease report this issue to the #{tap.full_name} tap"
+      tap_message += " (not Homebrew/brew or Homebrew/homebrew-core)" unless tap.official?
       tap_message += ", or even better, submit a PR to fix it" if replacement
       tap_message << ":\n  #{line.sub(/^(.*:\d+):.*$/, '\1')}\n\n"
       break
     end
+    file, line, = backtrace.first.split(":")
+    line = line.to_i if line.present?
 
     message = +"Calling #{method} is #{verb}! #{replacement_message}"
     message << tap_message if tap_message
@@ -147,12 +166,12 @@ module Kernel
 
     disable = true if disable_for_developers && Homebrew::EnvConfig.developer?
     if disable || Homebrew.raise_deprecation_exceptions?
-      puts "::error::#{message}" if ENV["GITHUB_ACTIONS"]
+      GitHub::Actions.puts_annotation_if_env_set(:error, message, file:, line:)
       exception = MethodDeprecatedError.new(message)
       exception.set_backtrace(backtrace)
       raise exception
     elsif !Homebrew.auditing?
-      puts "::warning::#{message}" if ENV["GITHUB_ACTIONS"]
+      GitHub::Actions.puts_annotation_if_env_set(:warning, message, file:, line:)
       opoo message
     end
   end
@@ -244,7 +263,9 @@ module Kernel
     raise ErrorDuringExecution.new([cmd, *args], status: $CHILD_STATUS)
   end
 
-  # Prints no output.
+  # Run a system command without any output.
+  #
+  # @api internal
   def quiet_system(cmd, *args)
     Homebrew._system(cmd, *args) do
       # Redirect output streams to `/dev/null` instead of closing as some programs
@@ -254,6 +275,9 @@ module Kernel
     end
   end
 
+  # Find a command.
+  #
+  # @api public
   def which(cmd, path = ENV.fetch("PATH"))
     PATH.new(path).each do |p|
       begin
@@ -401,6 +425,9 @@ module Kernel
     executable = [
       which(name),
       which(name, ORIGINAL_PATHS),
+      # We prefer the opt_bin path to a formula's executable over the prefix
+      # path where available, since the former is stable during upgrades.
+      HOMEBREW_PREFIX/"opt/#{formula_name}/bin/#{name}",
       HOMEBREW_PREFIX/"bin/#{name}",
     ].compact.first
     return executable if executable.exist?
@@ -474,14 +501,20 @@ module Kernel
   end
 
   # Calls the given block with the passed environment variables
-  # added to ENV, then restores ENV afterwards.
-  # <pre>with_env(PATH: "/bin") do
-  #   system "echo $PATH"
-  # end</pre>
+  # added to `ENV`, then restores `ENV` afterwards.
   #
-  # @note This method is *not* thread-safe - other threads
-  #   which happen to be scheduled during the block will also
-  #   see these environment variables.
+  # NOTE: This method is **not** thread-safe – other threads
+  #       which happen to be scheduled during the block will also
+  #       see these environment variables.
+  #
+  # ### Example
+  #
+  # ```ruby
+  # with_env(PATH: "/bin") do
+  #   system "echo $PATH"
+  # end
+  # ```
+  #
   # @api public
   def with_env(hash)
     old_values = {}

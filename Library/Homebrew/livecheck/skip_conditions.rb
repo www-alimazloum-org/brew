@@ -5,8 +5,6 @@ module Homebrew
   module Livecheck
     # The `Livecheck::SkipConditions` module primarily contains methods that
     # check for various formula/cask/resource conditions where a check should be skipped.
-    #
-    # @api private
     module SkipConditions
       module_function
 
@@ -117,20 +115,6 @@ module Homebrew
           verbose:       T::Boolean,
         ).returns(Hash)
       }
-      def cask_discontinued(cask, livecheckable, full_name: false, verbose: false)
-        return {} if !cask.discontinued? || livecheckable
-
-        Livecheck.status_hash(cask, "discontinued", full_name:, verbose:)
-      end
-
-      sig {
-        params(
-          cask:          Cask::Cask,
-          livecheckable: T::Boolean,
-          full_name:     T::Boolean,
-          verbose:       T::Boolean,
-        ).returns(Hash)
-      }
       def cask_deprecated(cask, livecheckable, full_name: false, verbose: false)
         return {} if !cask.deprecated? || livecheckable
 
@@ -212,7 +196,6 @@ module Homebrew
       # Skip conditions for casks.
       CASK_CHECKS = [
         :package_or_resource_skip,
-        :cask_discontinued,
         :cask_deprecated,
         :cask_disabled,
         :cask_extract_plist,
@@ -247,7 +230,6 @@ module Homebrew
         when Resource
           RESOURCE_CHECKS
         end
-        return {} unless checks
 
         checks.each do |method_name|
           skip_hash = case method_name

@@ -21,6 +21,7 @@
 /Library/Taps
 /Library/PinnedTaps
 /Library/Homebrew/.byebug_history
+/Library/Homebrew/test/.rdbg_history
 
 # Ignore Bundler files
 **/.bundle/bin
@@ -39,7 +40,7 @@
 # Ignore Ruby gems for versions other than we explicitly vendor.
 # Keep this in sync with the list in standalone/init.rb.
 **/vendor/bundle/ruby/*/
-!**/vendor/bundle/ruby/3.1.0/
+!**/vendor/bundle/ruby/3.3.0/
 
 # Ignore Bundler binary files
 **/vendor/bundle/ruby/*/gems/**/*.bundle
@@ -70,6 +71,7 @@
 
 # Ignore dependencies we don't wish to vendor
 **/vendor/bundle/ruby/*/gems/ast-*/
+**/vendor/bundle/ruby/*/gems/bigdecimal-*/
 **/vendor/bundle/ruby/*/gems/bootsnap-*/
 **/vendor/bundle/ruby/*/gems/bundler-*/
 **/vendor/bundle/ruby/*/gems/byebug-*/
@@ -105,6 +107,8 @@
 **/vendor/bundle/ruby/*/gems/racc-*/
 **/vendor/bundle/ruby/*/gems/rainbow-*/
 **/vendor/bundle/ruby/*/gems/rbi-*/
+**/vendor/bundle/ruby/*/gems/rdoc-*/
+**/vendor/bundle/ruby/*/gems/redcarpet-*/
 **/vendor/bundle/ruby/*/gems/regexp_parser-*/
 **/vendor/bundle/ruby/*/gems/rexml-*/
 **/vendor/bundle/ruby/*/gems/rspec-*/
@@ -130,11 +134,10 @@
 **/vendor/bundle/ruby/*/gems/syntax_tree-*/
 **/vendor/bundle/ruby/*/gems/tapioca-*/
 **/vendor/bundle/ruby/*/gems/thor-*/
-**/vendor/bundle/ruby/*/gems/unf-*/
-**/vendor/bundle/ruby/*/gems/unf_ext-*/
 **/vendor/bundle/ruby/*/gems/unicode-display_width-*/
 **/vendor/bundle/ruby/*/gems/unparser-*/
 **/vendor/bundle/ruby/*/gems/uri_template-*/
+**/vendor/bundle/ruby/*/gems/vernier-*/
 **/vendor/bundle/ruby/*/gems/webrobots-*/
 **/vendor/bundle/ruby/*/gems/yard-*/
 **/vendor/bundle/ruby/*/gems/yard-sorbet-*/
@@ -170,9 +173,10 @@
 !/.editorconfig
 !/.gitignore
 !/.irb_config
-!/.yardopts
-!/.vale.ini
+!/.ruby-version
 !/.shellcheckrc
+!/.vale.ini
+!/.yardopts
 !/CHANGELOG.md
 !/CONTRIBUTING.md
 !/Dockerfile

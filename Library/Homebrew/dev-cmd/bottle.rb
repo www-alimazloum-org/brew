@@ -6,6 +6,7 @@ require "fileutils"
 require "formula"
 require "utils/bottles"
 require "tab"
+require "sbom"
 require "keg"
 require "formula_versions"
 require "utils/inreplace"
@@ -99,6 +100,8 @@ module Homebrew
           Homebrew.install_bundler_gems!(groups: ["ast"])
           return merge
         end
+
+        Homebrew.install_bundler_gems!(groups: ["bottle"])
 
         gnu_tar_formula_ensure_installed_if_needed!
 
@@ -491,7 +494,8 @@ module Homebrew
             Tab.clear_cache
             Dependency.clear_cache
             Requirement.clear_cache
-            tab = Tab.for_keg(keg)
+
+            tab = keg.tab
             original_tab = tab.dup
             tab.poured_from_bottle = false
             tab.time = nil
@@ -502,6 +506,9 @@ module Homebrew
             else
               tab.write
             end
+
+            sbom = SBOM.create(formula, tab)
+            sbom.write(bottling: true)
 
             keg.consistent_reproducible_symlink_permissions!
 
@@ -621,6 +628,17 @@ module Homebrew
 
         return unless args.json?
 
+        if keg
+          keg_prefix = "#{keg}/"
+          path_exec_files = [keg/"bin", keg/"sbin"].select(&:exist?)
+                                                   .flat_map(&:children)
+                                                   .select(&:executable?)
+                                                   .map { |path| path.to_s.delete_prefix(keg_prefix) }
+          all_files = keg.find
+                         .select(&:file?)
+                         .map { |path| path.to_s.delete_prefix(keg_prefix) }
+        end
+
         json = {
           formula.full_name => {
             "formula" => {
@@ -645,10 +663,12 @@ module Homebrew
               "date"     => Pathname(filename.to_s).mtime.strftime("%F"),
               "tags"     => {
                 bottle_tag.to_s => {
-                  "filename"       => filename.url_encode,
-                  "local_filename" => filename.to_s,
-                  "sha256"         => sha256,
-                  "tab"            => tab.to_bottle_hash,
+                  "filename"        => filename.url_encode,
+                  "local_filename"  => filename.to_s,
+                  "sha256"          => sha256,
+                  "tab"             => tab.to_bottle_hash,
+                  "path_exec_files" => path_exec_files,
+                  "all_files"       => all_files,
                 },
               },
             },
