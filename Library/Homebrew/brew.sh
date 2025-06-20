@@ -600,6 +600,11 @@ case "$1" in
     homebrew-version
     exit 0
     ;;
+  mcp-server)
+    source "${HOMEBREW_LIBRARY}/Homebrew/cmd/mcp-server.sh"
+    homebrew-mcp-server "$@"
+    exit 0
+    ;;
 esac
 
 # TODO: bump version when new macOS is released or announced and update references in:
@@ -609,6 +614,8 @@ esac
 # and, if needed:
 # - MacOSVersion::SYMBOLS
 HOMEBREW_MACOS_NEWEST_UNSUPPORTED="16"
+# TODO: bump version when new macOS is released
+HOMEBREW_MACOS_NEWEST_SUPPORTED="15"
 # TODO: bump version when new macOS is released and update references in:
 # - docs/Installation.md
 # - HOMEBREW_MACOS_OLDEST_SUPPORTED in .github/workflows/pkg-installer.yml
@@ -836,6 +843,7 @@ export HOMEBREW_OS_VERSION
 export HOMEBREW_MACOS_VERSION
 export HOMEBREW_MACOS_VERSION_NUMERIC
 export HOMEBREW_MACOS_NEWEST_UNSUPPORTED
+export HOMEBREW_MACOS_NEWEST_SUPPORTED
 export HOMEBREW_MACOS_OLDEST_SUPPORTED
 export HOMEBREW_MACOS_OLDEST_ALLOWED
 export HOMEBREW_USER_AGENT
